@@ -1,0 +1,90 @@
+AWSTemplateFormatVersion: '2010-09-09'
+Parameters:
+  # Set New Relic Insights Insert Key. (Not License key)
+  NewRelicInsertKey:
+    Type: String
+    
+Resources:
+  MyNewEventsRule:
+    Type: 'AWS::Events::Rule'
+    Properties:
+      Description: This rule puts ECS task-state-change to firehose.
+      Name: NewRelicTaskStateChangeIntegrationRule
+      EventPattern:
+        source:
+          - aws.ecs
+        detail-type: 
+          - "ECS Task State Change"
+      State: ENABLED
+      Targets:
+        - Arn: !GetAtt [NewRelicDeliveryStream, Arn]
+          Id: Id1234
+          RoleArn: !GetAtt [EventsRuleRole, Arn]
+
+  NewRelicDeliveryStream: 
+    Type: AWS::KinesisFirehose::DeliveryStream
+    Properties: 
+      DeliveryStreamName: NewRelicTaskStateChangeIntegrationStream
+      DeliveryStreamType: DirectPut
+      HttpEndpointDestinationConfiguration:
+        EndpointConfiguration:
+          Name: New Relic
+          Url: "https://aws-api.newrelic.com/firehose/v1"
+          AccessKey: !Ref NewRelicInsertKey
+        RequestConfiguration:
+          ContentEncoding: GZIP
+        BufferingHints:
+          SizeInMBs: 5
+          IntervalInSeconds: 60
+        RetryOptions:
+          DurationInSeconds: 60
+        RoleARN: !GetAtt [FirehoseRole, Arn]
+        S3BackupMode: FailedDataOnly
+        S3Configuration: 
+          BucketARN: !GetAtt [FailedDataBackUpBucket, Arn]
+          RoleARN: !GetAtt [FirehoseRole, Arn]
+
+  EventsRuleRole:
+    Type: AWS::IAM::Role
+    Properties:
+      RoleName: NewRelicTaskStateChangeIntegrationEventsRole
+      AssumeRolePolicyDocument:
+        Statement:
+        - Effect: Allow
+          Principal:
+            Service: [events.amazonaws.com]
+          Action: ['sts:AssumeRole']
+      Path: /
+      Policies:
+      - PolicyName: NewRelicTaskStateChangeIntegrationEventsPolicy
+        PolicyDocument:
+          Statement:
+          - Effect: Allow
+            Action: [
+              "firehose:PutRecord",
+              "firehose:PutRecordBatch"
+            ]
+            Resource: !GetAtt [NewRelicDeliveryStream, Arn]
+
+  FirehoseRole:
+    Type: AWS::IAM::Role
+    Properties:
+      RoleName: NewRelicTaskStateChangeIntegrationStreamRole
+      AssumeRolePolicyDocument:
+        Statement:
+        - Effect: Allow
+          Principal:
+            Service: [firehose.amazonaws.com]
+          Action: ['sts:AssumeRole']
+      Path: /
+      ManagedPolicyArns:
+        - arn:aws:iam::aws:policy/PowerUserAccess
+
+  FailedDataBackUpBucket:
+    Type: AWS::S3::Bucket
+
+      
+
+        
+
+    
