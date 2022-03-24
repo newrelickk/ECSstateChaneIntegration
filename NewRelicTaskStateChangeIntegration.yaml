@@ -34,7 +34,7 @@ Resources:
         RequestConfiguration:
           ContentEncoding: GZIP
         BufferingHints:
-          SizeInMBs: 5
+          SizeInMBs: 1
           IntervalInSeconds: 60
         RetryOptions:
           DurationInSeconds: 60
